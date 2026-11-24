@@ -5,7 +5,7 @@ import Layout from './components/Layout.jsx';
 import { ToastHost, Spinner } from './components/ui.jsx';
 import Report from './pages/Report.jsx';
 import Track from './pages/Track.jsx';
-import { Login, Register, Forgot } from './pages/AuthPages.jsx';
+import { Login, Forgot } from './pages/AuthPages.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import IncidentDetail from './pages/IncidentDetail.jsx';
 import Dispatch from './pages/Dispatch.jsx';
@@ -15,7 +15,8 @@ import Analytics from './pages/Analytics.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import Alerts from './pages/Alerts.jsx';
-
+import { useState } from 'react';
+import SplashScreen from './components/SplashScreen.jsx';
 /** Frontend guard is only for UX — the real permission checks run on the server. */
 function Guard({ roles, children }) {
   const { user, ready } = useAuth();
@@ -28,14 +29,19 @@ function Guard({ roles, children }) {
 const OPS = ['ADMIN', 'DISPATCHER'], ALL = ['ADMIN', 'DISPATCHER', 'VIEWER'];
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
     <>
+    {showSplash && (
+  <SplashScreen onFinish={() => setShowSplash(false)} />
+)}
       <ToastHost />
       <Routes>
         <Route path="/" element={<Report />} />
         <Route path="/track/:id" element={<Track />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/forgot" element={<Forgot />} />
         <Route path="/app" element={<Guard><Layout /></Guard>}>
           <Route index element={<Guard roles={ALL}><Dashboard /></Guard>} />

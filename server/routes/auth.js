@@ -25,15 +25,9 @@ async function mailCode(user, purpose, ttl, subject, intro) {
 }
 export const sendInvite = user => mailCode(user, 'RESET', 72 * 60, 'You have been invited to RapidResQ', 'An administrator created a RapidResQ account for you. In the app choose "Forgot password" and use this code to set your password:');
 
-// Self-registration creates a read-only VIEWER account (admins can change the role later).
-router.post('/register', async (req, res) => {
-  const b = parse(z.object({ name: z.string().trim().min(2).max(80), email, phone: z.string().trim().max(20).optional(), password }), req.body);
-  if (await findByEmail(b.email)) throw new HttpError(409, 'An account with this email already exists');
-  const user = { id: uid(), name: b.name, email: b.email, role: 'VIEWER' };
-  await q('insert into users(id,name,email,phone,password_hash,role) values($1,$2,$3,$4,$5,$6)', [user.id, b.name, b.email, b.phone || null, await hashPassword(b.password), 'VIEWER']);
-  await mailCode(user, 'VERIFY', 30, 'Verify your RapidResQ account', 'Use this code to verify your email address:');
-  await audit(user, 'Account registered', { ip: req.ip });
-  res.status(201).json({ ok: true });
+// Public self-registration is disabled; staff accounts must be created by an administrator.
+router.post('/register', (_req, res) => {
+  res.status(403).json({ error: 'Public account creation is disabled. Ask a RapidResQ administrator for an invite.' });
 });
 
 router.post('/resend-verification', async (req, res) => {

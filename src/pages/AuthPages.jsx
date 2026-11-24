@@ -32,7 +32,10 @@ export function Login() {
           <label className="lbl">Password</label><input className="inp" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required />
           <div className="mt-3"><ErrorBox message={err} /></div>
           <button className="btn mt-4 w-full" disabled={busy}>{busy ? 'Please wait…' : 'Continue'}</button>
-          <div className="mt-4 flex justify-between text-sm text-blue-300"><Link to="/forgot">Forgot password?</Link><Link to="/register">Create account</Link></div>
+          <div className="mt-4 text-right text-sm text-blue-300"><Link to="/forgot">Forgot password?</Link></div>
+          <p className="mt-4 text-center text-xs leading-relaxed text-slate-400">
+            Staff accounts are created by an administrator. Ask your RapidResQ admin for an invite.
+          </p>
         </form>
       ) : (
         <form onSubmit={step === 'verify' ? verifyEmail : otp}>

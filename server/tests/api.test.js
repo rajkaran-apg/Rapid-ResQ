@@ -40,14 +40,11 @@ test('MFA: wrong password rejected, wrong OTP rejected, no token without OTP', a
   assert.equal((await request(app).get('/api/incidents')).status, 401);
 });
 
-test('registration needs email verification, then works', async () => {
+test('public account registration is disabled', async () => {
   const r = await request(app).post('/api/auth/register').send({ name: 'New Person', email: 'new@t.in', password: 'Abcdef12' });
-  assert.equal(r.status, 201);
-  const l = await request(app).post('/api/auth/login').send({ email: 'new@t.in', password: 'Abcdef12' });
-  assert.equal(l.body.step, 'verify');
-  const v = await request(app).post('/api/auth/verify-email').send({ email: 'new@t.in', code: lastCode('new@t.in') });
-  assert.equal(v.status, 200);
-  assert.equal((await request(app).post('/api/auth/login').send({ email: 'new@t.in', password: 'Abcdef12' })).body.step, 'otp');
+  assert.equal(r.status, 403);
+  assert.match(r.body.error, /Public account creation is disabled/);
+  assert.equal((await q("select id from users where email='new@t.in'")).length, 0);
 });
 
 test('password reset flow', async () => {

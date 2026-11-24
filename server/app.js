@@ -17,8 +17,8 @@ export function createApp() {
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: { directives: {
       defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
-      connectSrc: ["'self'", 'ws:', 'wss:', 'https://nominatim.openstreetmap.org'], fontSrc: ["'self'", 'data:']
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://tiles.openfreemap.org'],
+      connectSrc: ["'self'", 'ws:', 'wss:', 'https://nominatim.openstreetmap.org', 'https://tiles.openfreemap.org'], fontSrc: ["'self'", 'data:']
     } }
   }));
   app.use(cors({ origin: corsOrigin() }));

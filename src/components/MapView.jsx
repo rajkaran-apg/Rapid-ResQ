@@ -1,53 +1,267 @@
-import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents, useMap } from 'react-leaflet';
-import { useEffect } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { Link } from 'react-router-dom';
 import { INDORE, SEV_HEX } from '../lib/constants.js';
+import { useEffect, useRef } from 'react';
 
-const Tiles = () => <TileLayer attribution="© OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />;
+maplibregl.setWorkerUrl(workerUrl);
 
-function Fit({ points }) {
-  const map = useMap();
-  useEffect(() => { if (points.length) map.fitBounds(points, { padding: [40, 40], maxZoom: 15 }); }, [points.length]); // eslint-disable-line
-  return null;
+const LIGHT_STYLE = 'https://tiles.openfreemap.org/styles/positron';
+const DARK_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+
+function useDarkMode() {
+  return document.documentElement.classList.contains('dark');
 }
-function Recenter({ center }) {
-  const map = useMap();
-  useEffect(() => { if (center) map.setView(center, Math.max(map.getZoom(), 15)); }, [center?.[0], center?.[1]]); // eslint-disable-line
-  return null;
-}
-function Picker({ onPick }) { useMapEvents({ click: e => onPick(e.latlng.lat, e.latlng.lng) }); return null; }
 
-/** Tap-to-place location picker used by the report form. */
+function createMap(container, center, zoom, dark) {
+  return new maplibregl.Map({
+    container,
+    style: dark ? DARK_STYLE : LIGHT_STYLE,
+    center: [center[1], center[0]],
+    zoom,
+    attributionControl: true,
+    pitchWithRotate: false,
+    dragRotate: false,
+  });
+}
+
+function addPin(map, coordinates, color = '#ef4444') {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    width: 18px;
+    height: 18px;
+    border: 3px solid white;
+    border-radius: 50%;
+    background: ${color};
+    box-shadow: 0 2px 12px #0005;
+  `;
+  return new maplibregl.Marker({ element: el })
+    .setLngLat(coordinates)
+    .addTo(map);
+}
+
+function useMapTheme(map) {
+  const dark = useDarkMode();
+
+  useEffect(() => {
+    if (map) map.setStyle(dark ? DARK_STYLE : LIGHT_STYLE);
+  }, [map, dark]);
+}
+
 export function MapPicker({ lat, lng, onPick }) {
-  const center = lat != null ? [lat, lng] : INDORE;
+  const mapRef = useRef(null);
+  const containerRef = useRef(null);
+  const markerRef = useRef(null);
+  const callbackRef = useRef(onPick);
+
+  const hasPosition = lat != null && lng != null;
+  const center = hasPosition ? [lat, lng] : INDORE;
+
+  callbackRef.current = onPick;
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const map = createMap(
+      containerRef.current,
+      center,
+      13,
+      useDarkMode()
+    );
+
+    mapRef.current = map;
+
+    map.on('click', (e) => {
+      callbackRef.current?.(e.lngLat.lat, e.lngLat.lng);
+    });
+
+    return () => {
+      markerRef.current?.remove();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useMapTheme(mapRef.current);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (hasPosition) {
+      const coordinates = [lng, lat];
+
+      if (!markerRef.current) {
+        markerRef.current = addPin(map, coordinates);
+      } else {
+        markerRef.current.setLngLat(coordinates);
+      }
+
+      map.flyTo({
+        center: coordinates,
+        zoom: Math.max(map.getZoom(), 15),
+        duration: 700,
+      });
+    }
+  }, [lat, lng]);
+
   return (
-    <MapContainer center={center} zoom={13} style={{ height: 220 }} scrollWheelZoom={false}>
-      <Tiles /><Picker onPick={onPick} /><Recenter center={lat != null ? center : null} />
-      {lat != null && <CircleMarker center={center} radius={10} pathOptions={{ color: '#fff', fillColor: '#ef4444', fillOpacity: 1 }} />}
-    </MapContainer>
+    <div
+      ref={containerRef}
+      style={{
+        height: 220,
+        width: '100%',
+        borderRadius: 16,
+        overflow: 'hidden',
+      }}
+    />
   );
 }
 
-/** Incident markers coloured by severity (only incidents that have GPS coordinates). */
 export function IncidentMap({ incidents, height = 420 }) {
-  const pts = incidents.filter(i => i.lat != null);
+  const mapRef = useRef(null);
+  const containerRef = useRef(null);
+  const markersRef = useRef([]);
+
+  const points = incidents.filter(
+    (i) => i.lat != null && i.lng != null
+  );
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const map = createMap(
+      containerRef.current,
+      INDORE,
+      12,
+      useDarkMode()
+    );
+
+    mapRef.current = map;
+
+    return () => {
+      markersRef.current.forEach((m) => m.remove());
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useMapTheme(mapRef.current);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    points.forEach((incident) => {
+      const color =
+        incident.status === 'RESOLVED'
+          ? '#22c55e'
+          : SEV_HEX[incident.severity] || '#94a3b8';
+
+      const el = document.createElement('div');
+      el.style.cssText = `
+        width: 22px;
+        height: 22px;
+        border: 3px solid white;
+        border-radius: 50%;
+        background: ${color};
+        box-shadow: 0 2px 14px #0005;
+        cursor: pointer;
+      `;
+
+      const popup = new maplibregl.Popup({
+        offset: 16,
+        closeButton: true,
+      }).setHTML(
+        `<strong>${String(incident.type || 'Incident')}</strong>
+         <br/>
+         ${String(incident.address || '')}`
+      );
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([incident.lng, incident.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      el.addEventListener('dblclick', () => {
+        window.location.hash = `/app/incident/${encodeURIComponent(incident.id)}`;
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    if (points.length) {
+      if (points.length === 1) {
+        map.flyTo({
+          center: [points[0].lng, points[0].lat],
+          zoom: 15,
+          duration: 700,
+        });
+      } else {
+        const bounds = new maplibregl.LngLatBounds();
+
+        points.forEach((p) => bounds.extend([p.lng, p.lat]));
+
+        map.fitBounds(bounds, {
+          padding: 50,
+          maxZoom: 15,
+          duration: 700,
+        });
+      }
+    }
+  }, [incidents]);
+
   return (
-    <MapContainer center={INDORE} zoom={12} style={{ height }} scrollWheelZoom>
-      <Tiles /><Fit points={pts.map(i => [i.lat, i.lng])} />
-      {pts.map(i => (
-        <CircleMarker key={i.id} center={[i.lat, i.lng]} radius={i.status === 'RESOLVED' ? 7 : 11}
-          pathOptions={{ color: '#fff', weight: 2, fillColor: i.status === 'RESOLVED' ? '#22c55e' : SEV_HEX[i.severity] || '#94a3b8', fillOpacity: 0.95 }}>
-          <Popup><b>{i.type}</b><br />{i.address}<br /><Link to={`/app/incident/${i.id}`}>Open {i.id}</Link></Popup>
-        </CircleMarker>
-      ))}
-    </MapContainer>
+    <div
+      ref={containerRef}
+      style={{
+        height,
+        width: '100%',
+        borderRadius: 18,
+        overflow: 'hidden',
+      }}
+    />
   );
 }
 
 export function SinglePin({ lat, lng }) {
+  const mapRef = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const map = createMap(
+      containerRef.current,
+      [lat, lng],
+      15,
+      useDarkMode()
+    );
+
+    mapRef.current = map;
+    const marker = addPin(map, [lng, lat]);
+
+    return () => {
+      marker.remove();
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [lat, lng]);
+
+  useMapTheme(mapRef.current);
+
   return (
-    <MapContainer center={[lat, lng]} zoom={15} style={{ height: 180 }} scrollWheelZoom={false} dragging={false}>
-      <Tiles /><CircleMarker center={[lat, lng]} radius={10} pathOptions={{ color: '#fff', fillColor: '#ef4444', fillOpacity: 1 }} />
-    </MapContainer>
+    <div
+      ref={containerRef}
+      style={{
+        height: 180,
+        width: '100%',
+        borderRadius: 14,
+        overflow: 'hidden',
+      }}
+    />
   );
 }

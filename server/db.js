@@ -47,7 +47,11 @@ const SCHEMA = [
 export async function initDb() {
   if (config.databaseUrl) {
     const local = /localhost|127\.0\.0\.1/.test(config.databaseUrl);
-    pool = new pg.Pool({ connectionString: config.databaseUrl, ssl: local ? false : { rejectUnauthorized: false }, max: 10 });
+    pool = new pg.Pool({
+  connectionString: config.databaseUrl,
+  ssl: local ? false : { rejectUnauthorized: true },
+  max: 10
+});
   } else if (config.env !== 'production') {
     const { newDb } = await import('pg-mem');
     const { Pool } = newDb().adapters.createPg();

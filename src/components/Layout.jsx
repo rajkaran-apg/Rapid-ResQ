@@ -1,9 +1,10 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, Truck, Map as MapIcon, BarChart3, ScrollText, Users, Bell, Siren, MoreHorizontal, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
+import { NavLink, Outlet, Link } from 'react-router-dom';
+import { LayoutDashboard, Truck, Map as MapIcon, BarChart3, ScrollText, Users, Bell, Siren, MoreHorizontal, ClipboardList, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../lib/auth.jsx';
 import { useLive } from '../lib/socket.js';
 import { toast } from './ui.jsx';
+import { useTheme } from '../lib/theme.jsx';
 
 const ITEMS = {
   dashboard: { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -24,6 +25,7 @@ const NAV = {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [unread, setUnread] = useState(0);
   useLive((ev, p) => { if (ev === 'notification') { setUnread(n => n + 1); toast(`${p.title} — ${p.body}`, p.level); } }, []);
   const keys = NAV[user.role];
@@ -38,6 +40,24 @@ export default function Layout() {
     <div className="min-h-screen md:flex">
       <aside className="hidden w-60 shrink-0 flex-col gap-1 border-r border-white/10 p-4 md:flex">
         <Link to="/" className="mb-4 flex items-center gap-2 text-xl font-extrabold"><Siren className="text-red-400" /> RapidResQ</Link>
+
+<button
+  type="button"
+  onClick={toggleTheme}
+  className="mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-sm transition hover:opacity-80"
+  style={{
+    background: 'var(--surface-soft)',
+    borderColor: 'var(--border-color)',
+    color: 'var(--text-primary)'
+  }}
+>
+  <span className="flex items-center gap-2">
+    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+  </span>
+  <span className="text-xs opacity-60">Switch</span>
+</button>
+
         {keys.map(k => link(k))}
         <div className="mt-auto rounded-xl bg-white/5 p-3 text-sm"><div className="font-semibold">{user.name}</div><div className="text-xs text-slate-400">{user.role}</div>
           <button className="btn-ghost btn-sm btn mt-2 w-full" onClick={logout}>Log out</button></div>
@@ -49,18 +69,37 @@ export default function Layout() {
         </header>
         <main className="mx-auto max-w-6xl p-4 pb-28 md:pb-8"><Outlet /></main>
       </div>
-      <MobileBar main={main} more={more} link={link} logout={logout} user={user} />
+     <MobileBar
+  main={main}
+  more={more}
+  link={link}
+  logout={logout}
+  user={user}
+  theme={theme}
+  toggleTheme={toggleTheme}
+/>
     </div>
   );
 }
 
-function MobileBar({ main, more, link, logout, user }) {
+function MobileBar({ main, more, link, logout, user, theme, toggleTheme })  {
   const [open, setOpen] = useState(false);
   return (
     <>
       {open && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setOpen(false)}>
         <div className="absolute inset-x-3 bottom-24 rounded-2xl border border-white/10 bg-slate-900 p-3" onClick={() => setOpen(false)}>
           {more.map(k => link(k))}
+
+<button
+  type="button"
+  onClick={toggleTheme}
+  className="mt-2 flex w-full items-center gap-3 rounded-xl p-3 text-sm transition hover:bg-white/10"
+  style={{ color: 'var(--text-primary)' }}
+>
+  {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+  {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+</button>
+
           <div className="mt-2 border-t border-white/10 pt-2 text-sm text-slate-400">{user.name} · {user.email}</div>
           <button className="btn-ghost btn mt-2 w-full" onClick={logout}>Log out</button>
         </div></div>}

@@ -14,20 +14,17 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: CLIENT_URL
-        sync: false
+        fromService:
+          name: rapidresq
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
       - key: ADMIN_NAME
         sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
+      - key: GOOGLE_SCRIPT_URL
         sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
+      - key: GOOGLE_SCRIPT_SECRET
         sync: false
