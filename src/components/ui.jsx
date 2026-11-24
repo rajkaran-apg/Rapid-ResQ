@@ -46,13 +46,13 @@ export function IncidentCard({ i, draggable, onDragStart, selected, onClick, to 
         <div className="flex flex-col items-end gap-1"><SeverityBadge s={i.severity} /><StatusBadge s={i.status} /></div>
       </div>
       <p className="mt-2 line-clamp-2 text-sm text-slate-300">{i.title}</p>
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-400">
-        <span className="truncate">📍 {i.address}</span><span className="shrink-0">{timeAgo(i.createdAt)}</span>
+      <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-xs text-slate-400">
+        <span className="min-w-0 flex-1 truncate">📍 {i.address}</span><span className="shrink-0">{timeAgo(i.createdAt)}</span>
       </div>
       {!i.severity && i.aiSeverity && <div className="mt-2 text-xs text-purple-300">✦ AI suggests {i.aiSeverity} ({Math.round(i.aiConfidence * 100)}%)</div>}
     </div>
   );
-  return to ? <Link to={to}>{body}</Link> : body;
+  return to ? <Link className="rr-incident-link block min-w-0 max-w-full" to={to}>{body}</Link> : body;
 }
 
 export function Timeline({ events, showNotes = true }) {

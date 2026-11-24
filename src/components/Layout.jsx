@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, Truck, Map as MapIcon, BarChart3, ScrollText, Users, Bell, Siren, MoreHorizontal, ClipboardList, Sun, Moon } from 'lucide-react';
+import {
+  LayoutDashboard, Truck, Map as MapIcon, BarChart3, ScrollText, Users,
+  Bell, MoreHorizontal, ClipboardList, Sun, Moon, LogOut, Activity, X
+} from 'lucide-react';
 import { useAuth } from '../lib/auth.jsx';
 import { useLive } from '../lib/socket.js';
 import { toast } from './ui.jsx';
@@ -16,6 +19,7 @@ const ITEMS = {
   admin: { to: '/app/admin', label: 'Users & teams', icon: Users },
   alerts: { to: '/app/alerts', label: 'Alerts', icon: Bell }
 };
+
 const NAV = {
   ADMIN: ['dashboard', 'dispatch', 'map', 'analytics', 'audit', 'admin', 'alerts'],
   DISPATCHER: ['dashboard', 'dispatch', 'map', 'analytics', 'alerts'],
@@ -23,89 +27,104 @@ const NAV = {
   VIEWER: ['dashboard', 'map', 'analytics']
 };
 
+function Brand({ compact = false }) {
+  return (
+    <span className={compact ? 'rr-brand rr-brand-compact' : 'rr-brand'}>
+      <span className="rr-brand-mark"><img src="/rapidresq-logo.png" alt="" /></span>
+      <span className="rr-brand-copy">
+        <strong>RapidResQ</strong>
+        {!compact && <small>RESPONSE NETWORK</small>}
+      </span>
+    </span>
+  );
+}
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [unread, setUnread] = useState(0);
-  useLive((ev, p) => { if (ev === 'notification') { setUnread(n => n + 1); toast(`${p.title} — ${p.body}`, p.level); } }, []);
-  const keys = NAV[user.role];
+  useLive((ev, p) => {
+    if (ev === 'notification') {
+      setUnread(n => n + 1);
+      toast(p.title + ' — ' + p.body, p.level);
+    }
+  }, []);
+  const keys = NAV[user.role] || NAV.VIEWER;
   const main = keys.slice(0, 4), more = keys.slice(4);
-  const link = (k, compact) => { const it = ITEMS[k], Icon = it.icon; return (
-    <NavLink key={k} to={it.to} end={it.end} onClick={() => k === 'alerts' && setUnread(0)}
-      className={({ isActive }) => `relative flex rounded-xl text-sm ${compact ? 'min-w-[60px] flex-col items-center gap-0.5 px-2 py-1.5 text-[11px]' : 'items-center gap-3 px-3 py-2.5 md:w-full'} ${isActive ? 'bg-red-500/20 text-red-300' : 'text-slate-400 hover:bg-white/5'}`}>
-      <Icon size={compact ? 22 : 20} />{it.label}{k === 'alerts' && unread > 0 && <em className="absolute right-2 top-0.5 rounded-full bg-red-500 px-1.5 text-[10px] not-italic text-white">{unread}</em>}
-    </NavLink>); };
+  const link = (k, compact = false) => {
+    const it = ITEMS[k], Icon = it.icon;
+    return (
+      <NavLink key={k} to={it.to} end={it.end} onClick={() => k === 'alerts' && setUnread(0)}
+        className={({ isActive }) => ['rr-nav-link', compact ? 'rr-nav-link-mobile' : '', isActive ? 'is-active' : ''].filter(Boolean).join(' ')}
+        aria-label={compact ? it.label : undefined}>
+        <span className="rr-nav-icon"><Icon size={compact ? 21 : 19} strokeWidth={1.8} /></span>
+        <span className="rr-nav-label">{it.label}</span>
+        {k === 'alerts' && unread > 0 && <em className="rr-unread-badge">{unread}</em>}
+      </NavLink>
+    );
+  };
 
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="hidden w-60 shrink-0 flex-col gap-1 border-r border-white/10 p-4 md:flex">
-        <Link to="/" className="mb-4 flex items-center gap-2 text-xl font-extrabold"><Siren className="text-red-400" /> RapidResQ</Link>
-
-<button
-  type="button"
-  onClick={toggleTheme}
-  className="mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-3 text-sm transition hover:opacity-80"
-  style={{
-    background: 'var(--surface-soft)',
-    borderColor: 'var(--border-color)',
-    color: 'var(--text-primary)'
-  }}
->
-  <span className="flex items-center gap-2">
-    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-    {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-  </span>
-  <span className="text-xs opacity-60">Switch</span>
-</button>
-
-        {keys.map(k => link(k))}
-        <div className="mt-auto rounded-xl bg-white/5 p-3 text-sm"><div className="font-semibold">{user.name}</div><div className="text-xs text-slate-400">{user.role}</div>
-          <button className="btn-ghost btn-sm btn mt-2 w-full" onClick={logout}>Log out</button></div>
+    <div className="rr-admin-shell">
+      <aside className="rr-sidebar">
+        <Link to="/" className="rr-sidebar-brand" aria-label="RapidResQ home"><Brand /></Link>
+        <div className="rr-sidebar-live"><span className="rr-live-dot" /> Operations online</div>
+        <div className="rr-nav-caption">WORKSPACE</div>
+        <nav className="rr-sidebar-nav" aria-label="Main navigation">{keys.map(k => link(k))}</nav>
+        <div className="rr-sidebar-bottom">
+          <button type="button" onClick={toggleTheme} className="rr-theme-toggle">
+            <span>{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}{theme === 'dark' ? 'Light appearance' : 'Dark appearance'}</span>
+            <span className="rr-theme-state">{theme === 'dark' ? 'DARK' : 'LIGHT'}</span>
+          </button>
+          <div className="rr-user-card">
+            <span className="rr-user-avatar">{(user.name || 'R').trim().charAt(0).toUpperCase()}</span>
+            <span className="rr-user-copy"><strong>{user.name}</strong><small>{user.role}</small></span>
+            <button type="button" className="rr-logout-icon" onClick={logout} aria-label="Log out"><LogOut size={17} /></button>
+          </div>
+        </div>
       </aside>
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/90 px-4 py-3 backdrop-blur md:hidden">
-          <span className="flex items-center gap-2 font-extrabold"><Siren size={20} className="text-red-400" /> RapidResQ</span>
-          <span className="text-xs text-slate-400">{user.role}</span>
+
+      <div className="rr-admin-column">
+        <header className="rr-mobile-header">
+          <Link to="/" aria-label="RapidResQ home"><Brand /></Link>
+          <div className="rr-mobile-actions">
+            <Link to="/app/alerts" className="rr-header-action" aria-label={unread ? 'Alerts, unread notifications' : 'Alerts'} onClick={() => setUnread(0)}>
+              <Bell size={19} />{unread > 0 && <span className="rr-header-dot" />}
+            </Link>
+            <span className="rr-role-pill">{user.role}</span>
+          </div>
         </header>
-        <main className="mx-auto max-w-6xl p-4 pb-28 md:pb-8"><Outlet /></main>
+        <main className="rr-admin-main"><Outlet /></main>
       </div>
-     <MobileBar
-  main={main}
-  more={more}
-  link={link}
-  logout={logout}
-  user={user}
-  theme={theme}
-  toggleTheme={toggleTheme}
-/>
+      <MobileBar main={main} more={more} link={link} logout={logout} user={user} theme={theme} toggleTheme={toggleTheme} />
     </div>
   );
 }
 
-function MobileBar({ main, more, link, logout, user, theme, toggleTheme })  {
+function MobileBar({ main, more, link, logout, user, theme, toggleTheme }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      {open && <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setOpen(false)}>
-        <div className="absolute inset-x-3 bottom-24 rounded-2xl border border-white/10 bg-slate-900 p-3" onClick={() => setOpen(false)}>
-          {more.map(k => link(k))}
-
-<button
-  type="button"
-  onClick={toggleTheme}
-  className="mt-2 flex w-full items-center gap-3 rounded-xl p-3 text-sm transition hover:bg-white/10"
-  style={{ color: 'var(--text-primary)' }}
->
-  {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-  {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-</button>
-
-          <div className="mt-2 border-t border-white/10 pt-2 text-sm text-slate-400">{user.name} · {user.email}</div>
-          <button className="btn-ghost btn mt-2 w-full" onClick={logout}>Log out</button>
-        </div></div>}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex justify-around border-t border-white/10 bg-slate-950/95 px-1 pt-1 backdrop-blur md:hidden" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 6px)' }}>
+      {open && (
+        <div className="rr-more-backdrop" onClick={() => setOpen(false)}>
+          <section className="rr-more-sheet" role="dialog" aria-modal="true" aria-label="More navigation" onClick={e => e.stopPropagation()}>
+            <div className="rr-sheet-handle" />
+            <div className="rr-sheet-heading"><div><small>YOUR WORKSPACE</small><strong>More options</strong></div><button type="button" className="rr-sheet-close" onClick={() => setOpen(false)} aria-label="Close menu"><X size={20} /></button></div>
+            <nav className="rr-more-links" aria-label="More navigation">{more.map(k => link(k))}</nav>
+            <button type="button" onClick={toggleTheme} className="rr-sheet-action">
+              {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
+              <span>{theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>
+            </button>
+            <div className="rr-sheet-user"><span className="rr-user-avatar">{(user.name || 'R').trim().charAt(0).toUpperCase()}</span><span><strong>{user.name}</strong><small>{user.email}</small></span></div>
+            <button type="button" className="rr-sheet-logout" onClick={logout}><LogOut size={18} /> Log out</button>
+          </section>
+        </div>
+      )}
+      <nav className="rr-mobile-nav" aria-label="Primary navigation">
         {main.map(k => link(k, true))}
-        <button onClick={() => setOpen(o => !o)} className="flex min-w-[60px] flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[11px] text-slate-400"><MoreHorizontal size={22} />More</button>
+        <button type="button" onClick={() => setOpen(v => !v)} className={['rr-nav-link', 'rr-nav-link-mobile', open ? 'is-active' : ''].filter(Boolean).join(' ')} aria-expanded={open} aria-label="More options">
+          <span className="rr-nav-icon"><MoreHorizontal size={22} /></span><span className="rr-nav-label">More</span>
+        </button>
       </nav>
     </>
   );
